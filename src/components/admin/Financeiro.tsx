@@ -58,15 +58,20 @@ function formatBRLShort(v: number) {
 export const Financeiro = () => {
   const { store, patch } = useAdminData();
 
-  // todayKey em state para reagir a re-mounts e à virada do dia
+  // todayKey — sempre derivado ao vivo; state garante re-render na virada do dia
   const [todayKey, setTodayKey] = useState(() => todayKeyBRT());
   useEffect(() => {
-    // Garante valor fresco ao montar (resolve abas abertas desde outro dia)
-    setTodayKey(todayKeyBRT());
+    // Força leitura fresca na montagem (resolve aba aberta desde outro mês)
+    const fresh = todayKeyBRT();
+    setTodayKey(fresh);
+    setCurrentMonth((prev) => {
+      const realMonth = fresh.slice(0, 7);
+      return prev < realMonth ? realMonth : prev;
+    });
     // Verifica virada de dia a cada 5 min
     const id = setInterval(() => {
-      const fresh = todayKeyBRT();
-      setTodayKey((prev) => (prev !== fresh ? fresh : prev));
+      const next = todayKeyBRT();
+      setTodayKey((prev) => (prev !== next ? next : prev));
     }, 5 * 60 * 1000);
     return () => clearInterval(id);
   }, []);
@@ -151,10 +156,10 @@ export const Financeiro = () => {
     const months = [todayMonth, ...[...futureMonths].filter((m) => m > todayMonth).sort()].slice(0, 6);
     return months.map((ym) => {
       const paid = store.appointments
-        .filter((a) => a.date.startsWith(ym) && a.date <= todayKey && (a.paid || !!a.paymentMethod) && !a.absent)
+        .filter((a) => a.date.startsWith(ym) && (a.paid || !!a.paymentMethod) && !a.absent)
         .reduce((s, a) => s + (a.price ?? 0), 0);
       const planned = store.appointments
-        .filter((a) => a.date.startsWith(ym) && a.date > todayKey && !a.absent)
+        .filter((a) => a.date.startsWith(ym) && !a.paid && !a.paymentMethod && !a.absent)
         .reduce((s, a) => s + (a.price ?? 0), 0);
       return { ym, paid, planned, total: paid + planned };
     });
