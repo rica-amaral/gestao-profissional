@@ -11,8 +11,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Activity } from "lucide-react";
+import { Activity, FlaskConical } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+
+const DEMO_EMAIL = "demo@quiropraxia.app";
+const DEMO_PASSWORD = "Demo@1234";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -94,7 +97,30 @@ const Login = () => {
               : "Entre com seu e-mail e senha cadastrados."}
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {/* Banner demo */}
+          {!forgot && (
+            <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2">
+              <p className="text-xs font-semibold text-primary flex items-center gap-1.5">
+                <FlaskConical className="h-3.5 w-3.5" />
+                Acesso demo — experimente sem cadastro
+              </p>
+              <div className="text-xs text-muted-foreground space-y-0.5">
+                <p>E-mail: <span className="font-mono text-foreground">{DEMO_EMAIL}</span></p>
+                <p>Senha: <span className="font-mono text-foreground">{DEMO_PASSWORD}</span></p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="w-full h-7 text-xs border-primary/30 hover:bg-primary/10"
+                onClick={() => { setEmail(DEMO_EMAIL); setPassword(DEMO_PASSWORD); }}
+              >
+                Preencher automaticamente
+              </Button>
+            </div>
+          )}
+
           <form
             onSubmit={forgot ? handleForgotPassword : handleLogin}
             className="space-y-4"
@@ -142,6 +168,7 @@ const Login = () => {
           </form>
         </CardContent>
       </Card>
+
     </div>
   );
 };
