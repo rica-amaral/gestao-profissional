@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import { Activity, FlaskConical } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
-const DEMO_EMAIL = "demo@quiropraxia.app";
+const DEMO_EMAIL = "demo@demo.app";
 const DEMO_PASSWORD = "Demo@1234";
 
 const Login = () => {
