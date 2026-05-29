@@ -1,13 +1,13 @@
-/** Contato oficial */
-export const WHATSAPP_E164 = "5514997106093";
-export const WHATSAPP_DISPLAY = "(14) 99710-6093";
+/** Contato oficial — preencha com os dados do profissional */
+export const WHATSAPP_E164 = "";          // Ex: "5511999990000"
+export const WHATSAPP_DISPLAY = "";       // Ex: "(11) 99999-0000"
 
-export const INSTAGRAM_URL = "https://www.instagram.com/felipeceribelli/";
-export const INSTAGRAM_HANDLE = "@felipeceribelli";
+export const INSTAGRAM_URL = "";          // Ex: "https://www.instagram.com/seuperfil/"
+export const INSTAGRAM_HANDLE = "";       // Ex: "@seuperfil"
 
-export const CITY_LINE = "Bauru – SP";
+export const CITY_LINE = "";              // Ex: "São Paulo – SP"
 
-export const defaultWhatsAppMessage = "Olá! Gostaria de agendar uma avaliação de quiropraxia.";
+export const defaultWhatsAppMessage = "Olá! Gostaria de agendar uma consulta.";
 
 export function whatsappHref(message: string = defaultWhatsAppMessage) {
   return `https://wa.me/${WHATSAPP_E164}?text=${encodeURIComponent(message)}`;

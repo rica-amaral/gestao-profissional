@@ -11,15 +11,16 @@ import { Settings } from "@/components/admin/Settings";
 import { Waitlist } from "@/components/admin/Waitlist";
 import { Financeiro } from "@/components/admin/Financeiro";
 import { Button } from "@/components/ui/button";
-import { LogOut, Loader2 } from "lucide-react";
-import logoImage from "@/assets/logo-felipe-ceribelli.png";
+import { LogOut, Loader2, Stethoscope } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAdminData } from "@/contexts/AdminDataContext";
 
 const Admin = () => {
   const navigate = useNavigate();
   const [tab, setTab] = useState("dashboard");
-  const { loading } = useAdminData();
+  const { loading, store } = useAdminData();
+  const clinicName = store?.settings?.clinicName || "Gestão de Profissional";
+  const professionalName = store?.settings?.professionalName || "";
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -42,14 +43,14 @@ const Admin = () => {
       <header className="bg-card border-b border-border sticky top-0 z-50 shadow-soft">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img
-              src={logoImage}
-              alt="Felipe Ceribelli Quiropraxia"
-              className="h-12 w-auto object-contain"
-            />
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Stethoscope className="h-7 w-7 text-primary" />
+            </div>
             <div>
-              <h1 className="text-xl font-bold text-foreground">Painel Administrativo</h1>
-              <p className="text-sm text-muted-foreground">Gestão Quiropraxia</p>
+              <h1 className="text-xl font-bold text-foreground">{clinicName}</h1>
+              {professionalName && (
+                <p className="text-sm text-muted-foreground">{professionalName}</p>
+              )}
             </div>
           </div>
           <Button variant="outline" onClick={handleLogout} size="sm">
