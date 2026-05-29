@@ -1,0 +1,114 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 210 17% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 210 17% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 17% 10%;
+
+    /* Health green as primary */
+    --primary: 152 69% 31%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 152 60% 45%;
+    --primary-glow: 152 69% 85%;
+
+    --secondary: 210 17% 95%;
+    --secondary-foreground: 210 17% 10%;
+
+    --muted: 210 17% 95%;
+    --muted-foreground: 210 10% 45%;
+
+    --accent: 152 50% 96%;
+    --accent-foreground: 152 69% 31%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 210 17% 90%;
+    --input: 210 17% 90%;
+    --ring: 152 69% 31%;
+
+    --radius: 0.75rem;
+
+    /* Custom health theme colors */
+    --health-bg: 152 50% 98%;
+    --wellness-purple: 270 60% 65%;
+    --calm-blue: 210 100% 92%;
+    
+    /* Gradients */
+    --gradient-health: linear-gradient(135deg, hsl(152 69% 31%), hsl(152 60% 45%));
+    --gradient-soft: linear-gradient(180deg, hsl(0 0% 100%), hsl(152 50% 98%));
+    
+    /* Shadows */
+    --shadow-soft: 0 2px 8px -2px hsl(210 17% 10% / 0.08);
+    --shadow-medium: 0 4px 16px -4px hsl(210 17% 10% / 0.12);
+    --shadow-health: 0 8px 24px -8px hsl(152 69% 31% / 0.2);
+
+    /* Transitions */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .dark {
+    --background: 210 17% 10%;
+    --foreground: 0 0% 98%;
+
+    --card: 210 17% 12%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 210 17% 12%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 152 60% 45%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 152 69% 55%;
+    --primary-glow: 152 69% 25%;
+
+    --secondary: 210 17% 15%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 210 17% 15%;
+    --muted-foreground: 210 10% 60%;
+
+    --accent: 210 17% 18%;
+    --accent-foreground: 152 60% 45%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 210 17% 20%;
+    --input: 210 17% 20%;
+    --ring: 152 60% 45%;
+
+    --health-bg: 210 17% 8%;
+    --wellness-purple: 270 60% 65%;
+    --calm-blue: 210 50% 20%;
+
+    --gradient-health: linear-gradient(135deg, hsl(152 60% 45%), hsl(152 69% 55%));
+    --gradient-soft: linear-gradient(180deg, hsl(210 17% 10%), hsl(210 17% 8%));
+    
+    --shadow-soft: 0 2px 8px -2px hsl(0 0% 0% / 0.3);
+    --shadow-medium: 0 4px 16px -4px hsl(0 0% 0% / 0.4);
+    --shadow-health: 0 8px 24px -8px hsl(152 60% 45% / 0.3);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
