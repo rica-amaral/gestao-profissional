@@ -126,8 +126,8 @@ export const Financeiro = () => {
   const totalDespesas = despesasMes.reduce((s, e) => s + e.amount, 0);
   const saldo = totalReceitas - totalDespesas;
 
-  // ── Resumo últimos 6 meses — fixo na data real, não muda ao navegar ──
-  const todayMonth = todayKey.slice(0, 7);
+  // ── Sempre calculado ao vivo — nunca depende do state todayKey ──
+  const todayMonth = todayKeyBRT().slice(0, 7);
   const last6 = useMemo(() => {
     const months: string[] = [];
     const [cy, cm] = todayMonth.split("-").map(Number);
