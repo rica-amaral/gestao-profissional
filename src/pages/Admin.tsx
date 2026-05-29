@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { LogOut, Loader2, Stethoscope } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAdminData } from "@/contexts/AdminDataContext";
+import { PROFESSIONAL_TYPES_WITH_EVALUATION } from "@/lib/admin-types";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -21,6 +22,7 @@ const Admin = () => {
   const { loading, store } = useAdminData();
   const clinicName = store?.settings?.clinicName || "Gestão de Profissional";
   const professionalName = store?.settings?.professionalName || "";
+  const showEvaluation = PROFESSIONAL_TYPES_WITH_EVALUATION.includes(store?.settings?.professionalType as any);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -62,12 +64,12 @@ const Admin = () => {
 
       <main className="container mx-auto px-4 py-8">
         <Tabs value={tab} onValueChange={setTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-1 h-auto p-1">
+          <TabsList className={`grid w-full gap-1 h-auto p-1 ${showEvaluation ? "grid-cols-3 sm:grid-cols-5 lg:grid-cols-9" : "grid-cols-3 sm:grid-cols-4 lg:grid-cols-8"}`}>
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="schedule">Agenda</TabsTrigger>
             <TabsTrigger value="clients">Clientes</TabsTrigger>
             <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
-            <TabsTrigger value="evaluation">Avaliações</TabsTrigger>
+            {showEvaluation && <TabsTrigger value="evaluation">Avaliações</TabsTrigger>}
             <TabsTrigger value="adherence">Cancel./Reag.</TabsTrigger>
             <TabsTrigger value="slots">Horários</TabsTrigger>
             <TabsTrigger value="waitlist">Fila</TabsTrigger>

@@ -5,8 +5,16 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Building2, Clock, MapPin, DollarSign, MessageSquare } from "lucide-react";
 import { useAdminData } from "@/contexts/AdminDataContext";
-import type { ServicePlan } from "@/lib/admin-types";
+import type { ServicePlan, ProfessionalType } from "@/lib/admin-types";
+import { PROFESSIONAL_TYPE_LABELS } from "@/lib/admin-types";
 import { toast } from "@/hooks/use-toast";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export const Settings = () => {
   const { store, patch } = useAdminData();
@@ -86,6 +94,34 @@ export const Settings = () => {
               value={settings.professionalName}
               onChange={(e) => update({ professionalName: e.target.value })}
             />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Tipo de profissional</Label>
+              <Select
+                value={settings.professionalType}
+                onValueChange={(v) => update({ professionalType: v as ProfessionalType })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.entries(PROFESSIONAL_TYPE_LABELS) as [ProfessionalType, string][]).map(([k, v]) => (
+                    <SelectItem key={k} value={k}>{v}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Define quais abas são exibidas no painel.</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Como chamar cada atendimento</Label>
+              <Input
+                placeholder="Ex: Sessão, Consulta, Atendimento"
+                value={settings.appointmentLabel}
+                onChange={(e) => update({ appointmentLabel: e.target.value })}
+              />
+              <p className="text-xs text-muted-foreground">Aparece nos textos do painel.</p>
+            </div>
           </div>
         </CardContent>
       </Card>

@@ -82,11 +82,40 @@ export type ServicePlan = {
   price: number;
 };
 
+/** Tipos de profissional suportados */
+export type ProfessionalType =
+  | "quiropraxia"
+  | "nutricao"
+  | "psicologia"
+  | "massagem"
+  | "estetica"
+  | "outro";
+
+export const PROFESSIONAL_TYPE_LABELS: Record<ProfessionalType, string> = {
+  quiropraxia: "Quiropraxia",
+  nutricao:    "Nutrição",
+  psicologia:  "Psicologia / Terapia",
+  massagem:    "Massagem / Shiatsu",
+  estetica:    "Estética / Beleza",
+  outro:       "Outro",
+};
+
+/** Tipos que exibem a aba de Avaliações (ficha clínica) */
+export const PROFESSIONAL_TYPES_WITH_EVALUATION: ProfessionalType[] = [
+  "quiropraxia",
+  "nutricao",
+  "psicologia",
+];
+
 export type ClinicSettings = {
   /** Nome do consultório / clínica (aparece em mensagens como {clinica}) */
   clinicName: string;
   /** Nome do profissional responsável */
   professionalName: string;
+  /** Tipo de profissional — controla quais recursos são exibidos */
+  professionalType: ProfessionalType;
+  /** Como chamar cada atendimento (ex: "Sessão", "Consulta", "Atendimento") */
+  appointmentLabel: string;
   scheduleStart: string;
   scheduleEnd: string;
   earlyBlockUntilHour: number;
@@ -146,12 +175,14 @@ export type AdminStore = {
 };
 
 const defaultServices: ServicePlan[] = [
-  { id: "1", name: "Sessão individual", durationLabel: "~50 min", price: 180 },
+  { id: "1", name: "Atendimento individual", durationLabel: "~50 min", price: 0 },
 ];
 
 export const defaultClinicSettings = (): ClinicSettings => ({
   clinicName: "",
   professionalName: "",
+  professionalType: "outro",
+  appointmentLabel: "Atendimento",
   scheduleStart: "06:00",
   scheduleEnd: "20:00",
   earlyBlockUntilHour: 8,
@@ -163,9 +194,9 @@ export const defaultClinicSettings = (): ClinicSettings => ({
   locationAddress: "",
   services: defaultServices,
   messageConfirmation:
-    "Olá {nome}! Pode confirmar sua sessão no dia {data} às {hora}? Responda sim para confirmar. Obrigado!",
+    "Olá {nome}! Pode confirmar seu atendimento no dia {data} às {hora}? Responda sim para confirmar. Obrigado!",
   messageReminder:
-    "Olá {nome}! Lembrete: você tem sessão agendada para {data} às {hora}. Até lá!",
+    "Olá {nome}! Lembrete: você tem atendimento agendado para {data} às {hora}. Até lá!",
   messageBirthday:
     "Olá {nome}! Feliz aniversário! Desejamos um dia incrível e muita saúde. Um abraço da equipe {clinica}!",
 });

@@ -98,6 +98,8 @@ type SettingsRow = {
   owner_id: string;
   clinic_name: string | null;
   professional_name: string | null;
+  professional_type: string | null;
+  appointment_label: string | null;
   schedule_start: string;
   schedule_end: string;
   early_block_until_hour: number;
@@ -231,6 +233,8 @@ const settingsFromRow = (r: SettingsRow): ClinicSettings => ({
   scheduleEnd: r.schedule_end.slice(0, 5),
   clinicName: r.clinic_name ?? "",
   professionalName: r.professional_name ?? "",
+  professionalType: (r.professional_type ?? "outro") as ClinicSettings["professionalType"],
+  appointmentLabel: r.appointment_label ?? "Atendimento",
   earlyBlockUntilHour: r.early_block_until_hour,
   lunchStart: r.lunch_start.slice(0, 5),
   lunchEnd: r.lunch_end.slice(0, 5),
@@ -248,6 +252,8 @@ const settingsToRow = (s: ClinicSettings, nextEvalSeq: number, ownerId: string) 
   owner_id: ownerId,
   clinic_name: s.clinicName,
   professional_name: s.professionalName,
+  professional_type: s.professionalType,
+  appointment_label: s.appointmentLabel,
   schedule_start: s.scheduleStart.length === 5 ? `${s.scheduleStart}:00` : s.scheduleStart,
   schedule_end: s.scheduleEnd.length === 5 ? `${s.scheduleEnd}:00` : s.scheduleEnd,
   early_block_until_hour: s.earlyBlockUntilHour,

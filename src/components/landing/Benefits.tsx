@@ -1,32 +1,37 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { HeartPulse, Activity, ArrowUpRight, Minimize2, Moon } from "lucide-react";
+import { CalendarCheck, MessageCircle, ShieldCheck, Clock, Star, Smartphone } from "lucide-react";
 
 export const Benefits = () => {
   const benefits = [
     {
-      icon: HeartPulse,
-      title: "Redução de Dores",
-      description: "Alívio efetivo de dores lombares, cervicais e articulares através de ajustes precisos"
+      icon: CalendarCheck,
+      title: "Agenda organizada",
+      description: "Controle completo dos atendimentos, confirmações e histórico de cada cliente em um só lugar."
     },
     {
-      icon: Activity,
-      title: "Mobilidade Melhorada",
-      description: "Restauração da amplitude de movimento e flexibilidade para atividades diárias"
+      icon: MessageCircle,
+      title: "WhatsApp integrado",
+      description: "Envie lembretes, confirmações e mensagens de aniversário com um clique direto pelo WhatsApp."
     },
     {
-      icon: ArrowUpRight,
-      title: "Correção Postural",
-      description: "Ajustes que promovem melhor postura e previnem problemas futuros"
+      icon: ShieldCheck,
+      title: "Dados seguros",
+      description: "Cada profissional acessa apenas os próprios dados. Segurança e privacidade garantidas."
     },
     {
-      icon: Minimize2,
-      title: "Relaxamento Muscular",
-      description: "Redução de tensões e espasmos musculares causados por estresse ou má postura"
+      icon: Clock,
+      title: "Recorrência automática",
+      description: "Crie séries de atendimentos com frequência personalizada (semanal, quinzenal, mensal)."
     },
     {
-      icon: Moon,
-      title: "Melhora no Sono",
-      description: "Sono mais profundo e reparador com a redução de desconfortos noturnos"
+      icon: Star,
+      title: "Financeiro em dia",
+      description: "Acompanhe receitas, despesas, pendências e projeções sem planilhas ou cadernos."
+    },
+    {
+      icon: Smartphone,
+      title: "Funciona em qualquer tela",
+      description: "Acesse do celular, tablet ou computador. Sem instalação, direto pelo navegador."
     }
   ];
 
@@ -35,10 +40,10 @@ export const Benefits = () => {
       <div className="container mx-auto px-4">
         <div className="text-center mb-16 space-y-4">
           <h2 className="text-4xl lg:text-5xl font-bold text-foreground">
-            Benefícios da Quiropraxia
+            Tudo que você precisa para gerir seus atendimentos
           </h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Resultados comprovados para sua saúde e bem-estar
+            Para nutricionistas, quiropraxistas, psicólogos, massagistas, manicures e mais
           </p>
         </div>
 

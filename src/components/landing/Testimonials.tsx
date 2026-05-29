@@ -4,24 +4,24 @@ import { Star } from "lucide-react";
 export const Testimonials = () => {
   const testimonials = [
     {
-      name: "Maria Silva",
-      age: 45,
-      city: "Bauru",
-      text: "Após anos de dor lombar, finalmente encontrei alívio. As sessões são precisas e o profissionalismo é excepcional. Recomendo!",
+      name: "Camila Rodrigues",
+      role: "Nutricionista",
+      city: "São Paulo",
+      text: "Antes eu usava planilha e caderno para tudo. Agora tenho agenda, financeiro e histórico dos pacientes em um só lugar. Economizo horas toda semana.",
       rating: 5
     },
     {
-      name: "João Santos",
-      age: 52,
-      city: "Bauru",
-      text: "Excelente atendimento! Minha postura melhorou muito e as dores no pescoço desapareceram. Vale cada sessão.",
+      name: "Dr. Felipe Mendes",
+      role: "Quiropraxista",
+      city: "Campinas",
+      text: "O sistema de lembretes pelo WhatsApp reduziu as faltas pela metade. Os pacientes confirmam com um clique e eu fico sabendo na hora.",
       rating: 5
     },
     {
-      name: "Ana Paula",
-      age: 28,
-      city: "Bauru",
-      text: "Comecei por indicação e não me arrependo. Sinto muito mais mobilidade e minha qualidade de vida melhorou significativamente.",
+      name: "Ana Beatriz",
+      role: "Psicóloga",
+      city: "Belo Horizonte",
+      text: "A parte financeira é o que mais gosto. Vejo o faturamento do mês, as pendências e a projeção dos próximos atendimentos sem abrir uma planilha.",
       rating: 5
     }
   ];
@@ -31,16 +31,16 @@ export const Testimonials = () => {
       <div className="container mx-auto px-4">
         <div className="text-center mb-16 space-y-4">
           <h2 className="text-4xl lg:text-5xl font-bold text-foreground">
-            O que Dizem Nossos Pacientes
+            O que dizem os profissionais
           </h2>
           <p className="text-xl text-muted-foreground">
-            Resultados reais de pessoas reais
+            Resultados reais de quem já usa no dia a dia
           </p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
           {testimonials.map((testimonial, index) => (
-            <Card 
+            <Card
               key={index}
               className="border-border hover:shadow-medium transition-all duration-300"
             >
@@ -50,15 +50,15 @@ export const Testimonials = () => {
                     <Star key={i} className="h-5 w-5 fill-primary text-primary" />
                   ))}
                 </div>
-                
+
                 <p className="text-foreground leading-relaxed italic">
                   "{testimonial.text}"
                 </p>
-                
+
                 <div className="pt-4 border-t border-border">
                   <p className="font-semibold text-foreground">{testimonial.name}</p>
                   <p className="text-sm text-muted-foreground">
-                    {testimonial.age} anos • {testimonial.city}
+                    {testimonial.role} • {testimonial.city}
                   </p>
                 </div>
               </CardContent>
