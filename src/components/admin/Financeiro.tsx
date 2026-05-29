@@ -58,22 +58,25 @@ function formatBRLShort(v: number) {
 export const Financeiro = () => {
   const { store, patch } = useAdminData();
 
-  // todayKey — sempre derivado ao vivo; state garante re-render na virada do dia
+  // todayKey — sempre derivado ao vivo; atualiza na virada do dia e ao voltar para a aba
   const [todayKey, setTodayKey] = useState(() => todayKeyBRT());
   useEffect(() => {
-    // Força leitura fresca na montagem (resolve aba aberta desde outro mês)
-    const fresh = todayKeyBRT();
-    setTodayKey(fresh);
-    setCurrentMonth((prev) => {
-      const realMonth = fresh.slice(0, 7);
-      return prev < realMonth ? realMonth : prev;
-    });
-    // Verifica virada de dia a cada 5 min
-    const id = setInterval(() => {
-      const next = todayKeyBRT();
-      setTodayKey((prev) => (prev !== next ? next : prev));
-    }, 5 * 60 * 1000);
-    return () => clearInterval(id);
+    const refresh = () => {
+      const fresh = todayKeyBRT();
+      setTodayKey(fresh);
+      setCurrentMonth((prev) => {
+        const realMonth = fresh.slice(0, 7);
+        return prev < realMonth ? realMonth : prev;
+      });
+    };
+    refresh();
+    const onVisible = () => { if (document.visibilityState === "visible") refresh(); };
+    document.addEventListener("visibilitychange", onVisible);
+    const id = setInterval(refresh, 5 * 60 * 1000);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, []);
 
   // Mês selecionado — inicializa sempre pelo mês real BRT
