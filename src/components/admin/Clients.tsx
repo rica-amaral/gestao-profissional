@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { User, Search, Edit, Plus, ClipboardList, FileText, UserCircle, ChevronLeft, ChevronRight, BarChart2, ChevronDown, Heart } from "lucide-react";
+import { User, Search, Edit, Plus, ClipboardList, FileText, UserCircle, ChevronLeft, ChevronRight, BarChart2, ChevronDown, Heart, Paperclip, Upload, Trash2, ExternalLink, Loader2 } from "lucide-react";
 import {
   useAdminData,
   formatDateBR,
@@ -33,6 +33,7 @@ import {
 } from "@/contexts/AdminDataContext";
 import type { Client, ClientHealthData } from "@/lib/admin-types";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
 function maxPastAppointmentDate(
@@ -62,6 +63,73 @@ export const Clients = () => {
   const [genderFilter, setGenderFilter] = useState<"M" | "F" | "O" | null>(null);
   const [priceFilter, setPriceFilter] = useState<number | null>(null);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
+
+  // ── Exames / Anexos ──────────────────────────────────────────────
+  type Attachment = { name: string; path: string; createdAt: string };
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [loadingAttachments, setLoadingAttachments] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  const fetchAttachments = async (clientId: string) => {
+    setLoadingAttachments(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setLoadingAttachments(false); return; }
+    const folder = `${user.id}/${clientId}`;
+    const { data, error } = await supabase.storage.from("client-files").list(folder, { sortBy: { column: "created_at", order: "desc" } });
+    if (!error && data) {
+      setAttachments(data.map((f) => ({ name: f.name, path: `${folder}/${f.name}`, createdAt: f.created_at ?? "" })));
+    }
+    setLoadingAttachments(false);
+  };
+
+  const uploadAttachment = async (file: File, clientId: string) => {
+    if (file.size > 20 * 1024 * 1024) { toast({ variant: "destructive", title: "Arquivo muito grande (máx 20 MB)" }); return; }
+    setUploading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { toast({ variant: "destructive", title: "Sessão inválida" }); return; }
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const path = `${session.user.id}/${clientId}/${Date.now()}_${safeName}`;
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+
+      // FormData + fetch com ArrayBuffer para compatibilidade total com Safari
+      const buffer = await file.arrayBuffer();
+      const blob = new Blob([buffer], { type: file.type || "application/octet-stream" });
+      const formData = new FormData();
+      formData.append("", blob, file.name);
+      const res = await fetch(`${supabaseUrl}/storage/v1/object/client-files/${path}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "x-upsert": "false",
+        },
+        body: formData,
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => res.statusText);
+        throw new Error(`${res.status}: ${text}`);
+      }
+
+      toast({ title: "Arquivo enviado" });
+      await fetchAttachments(clientId);
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Erro ao enviar arquivo", description: e?.message ?? "Erro desconhecido" });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const deleteAttachment = async (path: string, clientId: string) => {
+    const { error } = await supabase.storage.from("client-files").remove([path]);
+    if (error) { toast({ variant: "destructive", title: "Erro ao excluir", description: error.message }); }
+    else { toast({ title: "Arquivo excluído" }); await fetchAttachments(clientId); }
+  };
+
+  const openAttachment = async (path: string) => {
+    const { data, error } = await supabase.storage.from("client-files").createSignedUrl(path, 60);
+    if (error || !data) { toast({ variant: "destructive", title: "Erro ao abrir arquivo" }); return; }
+    window.open(data.signedUrl, "_blank");
+  };
 
   const toggleGender = (g: "M" | "F" | "O") =>
     setGenderFilter((prev) => (prev === g ? null : g));
@@ -736,9 +804,9 @@ export const Clients = () => {
                 </div>
               </div>
 
-              <Tabs key={detailClient.id} defaultValue="cadastro" className="flex min-h-0 flex-1 flex-col">
+              <Tabs key={detailClient.id} defaultValue="cadastro" onValueChange={(v) => { if (v === "exames") fetchAttachments(detailClient.id); }} className="flex min-h-0 flex-1 flex-col">
                 <div className="shrink-0 border-b border-border px-6 pt-4">
-                  <TabsList className="grid h-auto w-full grid-cols-4 gap-1 bg-muted/60 p-1 sm:w-auto sm:inline-flex">
+                  <TabsList className="grid h-auto w-full grid-cols-5 gap-1 bg-muted/60 p-1 sm:w-auto sm:inline-flex">
                     <TabsTrigger value="cadastro" className="gap-1.5 text-xs sm:text-sm">
                       <User className="h-3.5 w-3.5 shrink-0" />
                       Cadastro
@@ -754,6 +822,10 @@ export const Clients = () => {
                     <TabsTrigger value="avaliacoes" className="gap-1.5 text-xs sm:text-sm">
                       <FileText className="h-3.5 w-3.5 shrink-0" />
                       Avaliações
+                    </TabsTrigger>
+                    <TabsTrigger value="exames" className="gap-1.5 text-xs sm:text-sm">
+                      <Paperclip className="h-3.5 w-3.5 shrink-0" />
+                      Exames
                     </TabsTrigger>
                   </TabsList>
                 </div>
@@ -1151,6 +1223,78 @@ export const Clients = () => {
                                 {e.notes && <p className="mt-2 text-muted-foreground">{e.notes}</p>}
                               </li>
                             ))}
+                          </ul>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  <TabsContent value="exames" className="m-0 focus-visible:outline-none">
+                    <Card className="border-border shadow-none">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <CardTitle className="text-base font-semibold">Exames e anexos</CardTitle>
+                            <p className="text-sm text-muted-foreground mt-1">PDF, JPG ou PNG · máx 20 MB por arquivo</p>
+                          </div>
+                          <label className={cn("cursor-pointer", uploading && "pointer-events-none opacity-50")}>
+                            <input
+                              type="file"
+                              accept=".pdf,.jpg,.jpeg,.png"
+                              className="hidden"
+                              disabled={uploading}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) uploadAttachment(file, detailClient.id);
+                                e.target.value = "";
+                              }}
+                            />
+                            <Button type="button" size="sm" asChild>
+                              <span>
+                                {uploading ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Upload className="h-4 w-4 mr-1.5" />}
+                                {uploading ? "Enviando..." : "Enviar arquivo"}
+                              </span>
+                            </Button>
+                          </label>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        {loadingAttachments ? (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
+                            <Loader2 className="h-4 w-4 animate-spin" /> Carregando...
+                          </div>
+                        ) : attachments.length === 0 ? (
+                          <p className="text-sm text-muted-foreground py-4 text-center">Nenhum arquivo anexado.</p>
+                        ) : (
+                          <ul className="space-y-2">
+                            {attachments.map((att) => {
+                              const displayName = att.name.replace(/^\d+_/, "");
+                              const isPdf = att.name.toLowerCase().endsWith(".pdf");
+                              return (
+                                <li key={att.path} className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
+                                  <FileText className={cn("h-5 w-5 shrink-0", isPdf ? "text-red-500" : "text-blue-500")} />
+                                  <span className="flex-1 text-sm font-medium text-foreground truncate" title={displayName}>
+                                    {displayName}
+                                  </span>
+                                  <div className="flex gap-1 shrink-0">
+                                    <Button
+                                      type="button" size="icon" variant="ghost" className="h-8 w-8"
+                                      title="Abrir"
+                                      onClick={() => openAttachment(att.path)}
+                                    >
+                                      <ExternalLink className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      type="button" size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive"
+                                      title="Excluir"
+                                      onClick={() => deleteAttachment(att.path, detailClient.id)}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </li>
+                              );
+                            })}
                           </ul>
                         )}
                       </CardContent>
