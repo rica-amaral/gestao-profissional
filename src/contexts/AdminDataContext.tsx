@@ -1,4 +1,4 @@
-import {
+import React, {
   createContext,
   useCallback,
   useContext,
@@ -17,6 +17,7 @@ import type {
 } from "@/lib/admin-types";
 import { defaultAdminStore } from "@/lib/admin-types";
 import { loadAdminStore, saveAdminStore } from "@/lib/admin-persist";
+import { supabase } from "@/integrations/supabase/client";
 
 type Ctx = {
   store: AdminStore;
@@ -27,24 +28,84 @@ type Ctx = {
 
 const AdminDataContext = createContext<Ctx | null>(null);
 
+// Chave localStorage por usuário — backup de emergência
+const localKey = (uid: string) => `gp_store_${uid}`;
+
+async function saveWithRetry(
+  confirmedRef: React.MutableRefObject<AdminStore>,
+  next: AdminStore,
+  attempts = 3,
+): Promise<void> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      // Sempre diff a partir do último estado CONFIRMADO no Supabase
+      await saveAdminStore(confirmedRef.current, next);
+      confirmedRef.current = next; // marca como confirmado
+      return;
+    } catch (err) {
+      lastErr = err;
+      if (i < attempts - 1) await new Promise((r) => setTimeout(r, 1500 * (i + 1)));
+    }
+  }
+  throw lastErr;
+}
+
 export function AdminDataProvider({ children }: { children: ReactNode }) {
   const [store, setStore] = useState<AdminStore>(() => defaultAdminStore());
   const [loading, setLoading] = useState(true);
-  // Fila de saves serializada — evita race conditions quando o usuário faz
-  // várias edições em sequência (cada save espera o anterior terminar).
+  const [syncError, setSyncError] = useState(false);
+
+  // Último estado confirmado no Supabase — base para diffs futuros
+  const confirmedRef = useRef<AdminStore>(defaultAdminStore());
+  // Fila serializada — evita concorrência entre saves
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const userIdRef = useRef<string | null>(null);
 
   const reload = useCallback(async () => {
     setLoading(true);
     try {
-      const next = await loadAdminStore();
-      setStore(next);
+      const loaded = await loadAdminStore();
+      confirmedRef.current = loaded;
+      setSyncError(false);
+
+      // Verifica backup localStorage: re-insere itens que faltam no Supabase
+      const uid = userIdRef.current;
+      if (uid) {
+        try {
+          const raw = localStorage.getItem(localKey(uid));
+          if (raw) {
+            const backup: AdminStore = JSON.parse(raw);
+            const loadedIds = new Set(loaded.appointments.map((a) => a.id));
+            const missing = backup.appointments.filter((a) => !loadedIds.has(a.id));
+            if (missing.length > 0) {
+              console.warn(`Recuperando ${missing.length} agendamento(s) do backup local...`);
+              loaded.appointments = [...loaded.appointments, ...missing];
+              // Re-salva imediatamente para sincronizar com Supabase
+              saveQueueRef.current = saveQueueRef.current.then(() =>
+                saveWithRetry(confirmedRef, loaded)
+              );
+            } else {
+              localStorage.removeItem(localKey(uid));
+            }
+          }
+        } catch {}
+      }
+
+      setStore(loaded);
     } catch (e) {
       console.error("Falha ao carregar dados:", e);
       toast.error("Não foi possível carregar seus dados. Tente recarregar a página.");
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  // Captura userId ao montar
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      userIdRef.current = data.user?.id ?? null;
+    });
   }, []);
 
   useEffect(() => {
@@ -54,22 +115,57 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
   const patch = useCallback((fn: (s: AdminStore) => AdminStore) => {
     setStore((prev) => {
       const next = fn(prev);
-      // Empurra o save pro final da fila (sequencial)
+
+      // Salva snapshot no localStorage imediatamente (antes do async)
+      const uid = userIdRef.current;
+      if (uid) {
+        try { localStorage.setItem(localKey(uid), JSON.stringify(next)); } catch {}
+      }
+
+      // Empurra na fila serializada com retry automático
       saveQueueRef.current = saveQueueRef.current
-        .then(() => saveAdminStore(prev, next))
+        .then(() => saveWithRetry(confirmedRef, next))
+        .then(() => {
+          setSyncError(false);
+          if (uid) localStorage.removeItem(localKey(uid));
+        })
         .catch((err) => {
-          console.error("Falha ao salvar no Supabase:", err);
-          toast.error(
-            "Erro ao salvar no servidor. Sua alteração local foi mantida — recarregue a página para sincronizar."
-          );
+          console.error("Falha ao salvar após retentativas:", err);
+          setSyncError(true);
+          toast.error("Sem conexão com o servidor. Dados salvos localmente — sincronizará quando reconectar.");
         });
+
       return next;
     });
   }, []);
 
-  const value = useMemo(() => ({ store, patch, loading, reload }), [store, patch, loading, reload]);
+  // Tenta re-sincronizar quando conexão volta
+  useEffect(() => {
+    if (!syncError) return;
+    const onOnline = () => {
+      setSyncError(false);
+      void reload();
+    };
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, [syncError, reload]);
 
-  return <AdminDataContext.Provider value={value}>{children}</AdminDataContext.Provider>;
+  const value = useMemo(
+    () => ({ store, patch, loading, reload }),
+    [store, patch, loading, reload],
+  );
+
+  return (
+    <AdminDataContext.Provider value={value}>
+      {syncError && (
+        <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-medium text-white shadow-lg">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-white" />
+          Dados salvos localmente — aguardando conexão
+        </div>
+      )}
+      {children}
+    </AdminDataContext.Provider>
+  );
 }
 
 export function useAdminData() {
@@ -269,13 +365,14 @@ export function daysSinceLastVisit(
   return diff < 0 ? 0 : diff;
 }
 
-/** Data de hoje no fuso local do browser (BRT no Brasil) */
+/** Data de hoje no fuso America/Sao_Paulo via Intl API */
 export function todayKeyBRT(): string {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date()); // retorna "YYYY-MM-DD" diretamente
 }
 
 export function birthdaysToday(clients: Client[]): Client[] {
