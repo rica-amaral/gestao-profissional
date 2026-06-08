@@ -64,38 +64,58 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
 
   const reload = useCallback(async () => {
     setLoading(true);
-    try {
-      const loaded = await loadAdminStore();
-      confirmedRef.current = loaded;
-      setSyncError(false);
 
-      // Verifica backup localStorage: re-insere itens que faltam no Supabase
-      const uid = userIdRef.current;
-      if (uid) {
-        try {
-          const raw = localStorage.getItem(localKey(uid));
-          if (raw) {
-            const backup: AdminStore = JSON.parse(raw);
-            const loadedIds = new Set(loaded.appointments.map((a) => a.id));
-            const missing = backup.appointments.filter((a) => !loadedIds.has(a.id));
-            if (missing.length > 0) {
-              console.warn(`Recuperando ${missing.length} agendamento(s) do backup local...`);
-              loaded.appointments = [...loaded.appointments, ...missing];
-              // Re-salva imediatamente para sincronizar com Supabase
-              saveQueueRef.current = saveQueueRef.current.then(() =>
-                saveWithRetry(confirmedRef, loaded)
-              );
-            } else {
-              localStorage.removeItem(localKey(uid));
+    // CRÍTICO: o reload só pode rodar depois que TODAS as gravações
+    // pendentes na fila tiverem sido confirmadas. Caso contrário ele
+    // sobrescreve confirmedRef/store com um snapshot desatualizado do
+    // servidor enquanto um save ainda está em trânsito — e o save em
+    // trânsito, ao terminar, faz diff contra esse snapshot já obsoleto,
+    // apagando ou duplicando agendamentos (inclusive futuros).
+    const runLoad = async () => {
+      try {
+        const loaded = await loadAdminStore();
+        confirmedRef.current = loaded;
+        setSyncError(false);
+
+        // Verifica backup localStorage: re-insere itens que faltam no Supabase
+        const uid = userIdRef.current;
+        if (uid) {
+          try {
+            const raw = localStorage.getItem(localKey(uid));
+            if (raw) {
+              const backup: AdminStore = JSON.parse(raw);
+              const loadedIds = new Set(loaded.appointments.map((a) => a.id));
+              const missing = backup.appointments.filter((a) => !loadedIds.has(a.id));
+              if (missing.length > 0) {
+                console.warn(`Recuperando ${missing.length} agendamento(s) do backup local...`);
+                loaded.appointments = [...loaded.appointments, ...missing];
+                // Re-salva e só então marca como confirmado — tudo dentro
+                // do mesmo slot da fila, sem concorrência com outros saves.
+                await saveWithRetry(confirmedRef, loaded);
+                confirmedRef.current = loaded;
+              } else {
+                localStorage.removeItem(localKey(uid));
+              }
             }
-          }
-        } catch {}
-      }
+          } catch {}
+        }
 
-      setStore(loaded);
-    } catch (e) {
-      console.error("Falha ao carregar dados:", e);
-      toast.error("Não foi possível carregar seus dados. Tente recarregar a página.");
+        setStore(loaded);
+      } catch (e) {
+        console.error("Falha ao carregar dados:", e);
+        toast.error("Não foi possível carregar seus dados. Tente recarregar a página.");
+      }
+    };
+
+    // Encadeia na mesma fila serializada usada pelos saves (patch/saveWithRetry).
+    // Assim o reload espera o que já está pendente terminar, e qualquer save
+    // disparado depois (por um patch concorrente) só roda após o reload —
+    // sempre fazendo diff a partir do confirmedRef recém-atualizado.
+    const chained = saveQueueRef.current.then(runLoad, runLoad);
+    saveQueueRef.current = chained.catch(() => {});
+
+    try {
+      await chained;
     } finally {
       setLoading(false);
     }

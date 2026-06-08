@@ -282,6 +282,32 @@ function safeParseJson(s: string): unknown {
 // LOAD: busca tudo do Supabase e monta o AdminStore
 // ===================================================================
 
+// O Supabase/PostgREST limita cada resposta a no máximo ~1000 linhas por
+// padrão. Tabelas que podem crescer além disso (ex: appointments,
+// adherence_events) precisam ser buscadas em páginas com `.range()`,
+// caso contrário registros mais antigos somem silenciosamente da consulta
+// — sem erro, sem aviso — mesmo existindo no banco e com refresh/cache
+// limpos. Esse helper busca todas as páginas até esgotar os resultados.
+async function fetchAllRows<T>(
+  table: string,
+  pageSize = 1000,
+): Promise<T[]> {
+  const all: T[] = [];
+  let from = 0;
+  for (;;) {
+    const { data, error } = await supabase
+      .from(table as any)
+      .select("*")
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    const page = (data ?? []) as T[];
+    all.push(...page);
+    if (page.length < pageSize) break;
+    from += pageSize;
+  }
+  return all;
+}
+
 export async function loadAdminStore(): Promise<AdminStore> {
   const { data: userData } = await supabase.auth.getUser();
   const userId = userData.user?.id;
@@ -292,33 +318,27 @@ export async function loadAdminStore(): Promise<AdminStore> {
   }
 
   const [
-    clientsRes,
-    appointmentsRes,
-    evaluationsRes,
-    adherenceRes,
+    clientsRaw,
+    appointmentsRaw,
+    evaluationsRaw,
+    adherenceRaw,
     waitlistRes,
     settingsRes,
   ] = await Promise.all([
-    supabase.from("clients").select("*"),
-    supabase.from("appointments").select("*"),
-    supabase.from("evaluations").select("*"),
-    supabase.from("adherence_events").select("*"),
+    fetchAllRows<ClientRow>("clients"),
+    fetchAllRows<AppointmentRow>("appointments"),
+    fetchAllRows<EvaluationRow>("evaluations"),
+    fetchAllRows<AdherenceRow>("adherence_events"),
     supabase.from("waitlist").select("*").order("requested_at", { ascending: true }),
     supabase.from("clinic_settings").select("*").eq("owner_id", userId).maybeSingle(),
   ]);
 
-  if (clientsRes.error) throw clientsRes.error;
-  if (appointmentsRes.error) throw appointmentsRes.error;
-  if (evaluationsRes.error) throw evaluationsRes.error;
-  if (adherenceRes.error) throw adherenceRes.error;
   if (waitlistRes.error) throw waitlistRes.error;
   if (settingsRes.error) throw settingsRes.error;
 
-  const clientsRaw = (clientsRes.data ?? []) as ClientRow[];
   const clients = clientsRaw.map(clientFromRow);
   const clientById = new Map(clients.map((c) => [c.id, c]));
 
-  const appointmentsRaw = (appointmentsRes.data ?? []) as AppointmentRow[];
   const appointments = appointmentsRaw.map((a) =>
     appointmentFromRow(
       a,
@@ -327,12 +347,10 @@ export async function loadAdminStore(): Promise<AdminStore> {
     ),
   );
 
-  const evaluationsRaw = (evaluationsRes.data ?? []) as EvaluationRow[];
   const evaluations = evaluationsRaw.map((e) =>
     evaluationFromRow(e, clientById.get(e.client_id)?.name ?? "(cliente removido)"),
   );
 
-  const adherenceRaw = (adherenceRes.data ?? []) as AdherenceRow[];
   const adherenceEvents = adherenceRaw.map((ev) =>
     adherenceFromRow(ev, clientById.get(ev.client_id)?.name ?? "(cliente removido)"),
   );

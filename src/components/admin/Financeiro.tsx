@@ -358,7 +358,7 @@ export const Financeiro = () => {
             return (
               <div key={m.ym} className="space-y-1">
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className={cn("text-sm", isCurrentMonth ? "font-semibold text-foreground" : "text-muted-foreground capitalize")}>
+                  <span className={cn("text-sm", isCurrentMonth ? "font-semibold text-foreground capitalize" : "text-muted-foreground capitalize")}>
                     {format(new Date(m.ym + "-01"), "MMMM", { locale: ptBR })}{isCurrentMonth && " (atual)"}
                   </span>
                   <div className="flex items-baseline gap-2 shrink-0">
