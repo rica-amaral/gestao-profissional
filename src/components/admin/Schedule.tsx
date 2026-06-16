@@ -47,7 +47,7 @@ import {
   MAX_PER_SLOT,
   isWeekend,
 } from "@/contexts/AdminDataContext";
-import type { Appointment, AdherenceEvent } from "@/lib/admin-types";
+import type { Appointment, AdherenceEvent, PersonalEvent } from "@/lib/admin-types";
 import { whatsappClientHref } from "@/lib/contact";
 import { toast } from "@/hooks/use-toast";
 import { cn, formatBRL } from "@/lib/utils";
@@ -91,6 +91,8 @@ export const Schedule = () => {
 
   // Agendamento recorrente
   const [recurOpen, setRecurOpen] = useState(false);
+  const [recurIsPersonal, setRecurIsPersonal] = useState(false);
+  const [recurTitle, setRecurTitle] = useState("");
   const [recurClientId, setRecurClientId] = useState("");
   const [recurPrice, setRecurPrice] = useState("0");
   const [recurTime, setRecurTime] = useState("09:00");
@@ -264,6 +266,8 @@ export const Schedule = () => {
   };
 
   const openRecur = () => {
+    setRecurIsPersonal(false);
+    setRecurTitle("");
     setRecurClientId("");
     setRecurPrice("0");
     setRecurTime("09:00");
@@ -275,10 +279,7 @@ export const Schedule = () => {
   };
 
   const confirmRecurring = () => {
-    if (!recurClientId || !recurTime || !recurStartDate) return;
-    const c = store.clients.find((x) => x.id === recurClientId);
-    if (!c) return;
-    const priceValue = parseFloat(recurPrice) || 0;
+    if (!recurTime || !recurStartDate) return;
     const intervalWeeks = parseInt(recurInterval) || 1;
     const count = Math.min(parseInt(recurCount) || 1, 52);
     const targetDow = parseInt(recurDayOfWeek); // 1=Seg...5=Sex
@@ -290,6 +291,38 @@ export const Schedule = () => {
       start.setDate(start.getDate() + 1);
       safety++;
     }
+
+    // ── Compromisso pessoal recorrente ──────────────────────────
+    if (recurIsPersonal) {
+      if (!recurTitle.trim()) return;
+      const newEvents: PersonalEvent[] = [];
+      const current = new Date(start);
+      for (let i = 0; i < count; i++) {
+        newEvents.push({
+          id: crypto.randomUUID(),
+          date: format(current, "yyyy-MM-dd"),
+          time: recurTime,
+          title: recurTitle.trim(),
+        });
+        current.setDate(current.getDate() + intervalWeeks * 7);
+      }
+      patch((s) => ({
+        ...s,
+        settings: {
+          ...s.settings,
+          personalEvents: [...(s.settings.personalEvents ?? []), ...newEvents],
+        },
+      }));
+      setRecurOpen(false);
+      toast({ title: `${newEvents.length} compromisso(s) "${recurTitle.trim()}" criados` });
+      return;
+    }
+
+    // ── Agendamento clínico recorrente ──────────────────────────
+    if (!recurClientId) return;
+    const c = store.clients.find((x) => x.id === recurClientId);
+    if (!c) return;
+    const priceValue = parseFloat(recurPrice) || 0;
 
     const newApts: Appointment[] = [];
     const current = new Date(start);
@@ -974,26 +1007,50 @@ export const Schedule = () => {
             <DialogDescription>Cria múltiplos agendamentos com intervalo semanal fixo.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Cliente</Label>
-              <Select value={recurClientId} onValueChange={onSelectRecurClient}>
-                <SelectTrigger><SelectValue placeholder="— selecione —" /></SelectTrigger>
-                <SelectContent>
-                  {[...store.clients].sort((a, b) => a.name.localeCompare(b.name, "pt-BR")).map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {/* Toggle clínico / pessoal */}
+            <div className="flex gap-2">
+              <Button type="button" size="sm" variant={!recurIsPersonal ? "default" : "outline"} onClick={() => setRecurIsPersonal(false)}>
+                Clínico
+              </Button>
+              <Button type="button" size="sm" variant={recurIsPersonal ? "default" : "outline"} onClick={() => setRecurIsPersonal(true)}>
+                Pessoal
+              </Button>
             </div>
+
+            {recurIsPersonal ? (
+              <div className="space-y-2">
+                <Label>Descrição</Label>
+                <Input
+                  placeholder="Ex: Yoga, Academia, Médico..."
+                  value={recurTitle}
+                  onChange={(e) => setRecurTitle(e.target.value)}
+                  autoFocus
+                />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label>Cliente</Label>
+                <Select value={recurClientId} onValueChange={onSelectRecurClient}>
+                  <SelectTrigger><SelectValue placeholder="— selecione —" /></SelectTrigger>
+                  <SelectContent>
+                    {[...store.clients].sort((a, b) => a.name.localeCompare(b.name, "pt-BR")).map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Horário</Label>
                 <Input type="time" value={recurTime} onChange={(e) => setRecurTime(e.target.value)} />
               </div>
-              <div className="space-y-2">
-                <Label>Valor (R$)</Label>
-                <Input type="number" min="0" step="10" value={recurPrice} onChange={(e) => setRecurPrice(e.target.value)} />
-              </div>
+              {!recurIsPersonal && (
+                <div className="space-y-2">
+                  <Label>Valor (R$)</Label>
+                  <Input type="number" min="0" step="10" value={recurPrice} onChange={(e) => setRecurPrice(e.target.value)} />
+                </div>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
@@ -1034,7 +1091,7 @@ export const Schedule = () => {
               </div>
             </div>
             {/* Preview das datas */}
-            {recurClientId && recurTime && recurStartDate && (() => {
+            {(recurIsPersonal ? recurTitle.trim() : recurClientId) && recurTime && recurStartDate && (() => {
               const targetDow = parseInt(recurDayOfWeek);
               const cur = new Date(recurStartDate + "T12:00:00");
               let safety = 0;
@@ -1069,9 +1126,12 @@ export const Schedule = () => {
             <Button variant="outline" onClick={() => setRecurOpen(false)}>Cancelar</Button>
             <Button
               onClick={confirmRecurring}
-              disabled={!recurClientId || !recurTime || !recurStartDate || parseInt(recurCount) < 1}
+              disabled={
+                (recurIsPersonal ? !recurTitle.trim() : !recurClientId) ||
+                !recurTime || !recurStartDate || parseInt(recurCount) < 1
+              }
             >
-              Criar {recurCount} agendamentos
+              Criar {recurCount} {recurIsPersonal ? "compromissos" : "agendamentos"}
             </Button>
           </DialogFooter>
         </DialogContent>
