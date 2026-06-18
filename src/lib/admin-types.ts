@@ -122,6 +122,14 @@ export type ClinicSettings = {
   lunchStart: string;
   lunchEnd: string;
   dayEarlyUnlocked: Record<string, boolean>;
+  /**
+   * Horário customizado por dia da semana (chave "0"=domingo ... "6"=sábado,
+   * normalmente só "1" a "5" são usados). Quando presente para um dia,
+   * TRAVA o atendimento fora do intervalo [start, end) nesse dia — diferente
+   * do scheduleStart/scheduleEnd globais, que são apenas indicativos visuais.
+   * Ex: { "5": { end: "17:00" } } = sexta-feira não atende depois das 17h.
+   */
+  weekdayOverrides?: Record<string, { start?: string; end?: string }>;
   personalEvents: PersonalEvent[];
   expenses: Expense[];
   locationAddress: string;
@@ -189,6 +197,7 @@ export const defaultClinicSettings = (): ClinicSettings => ({
   lunchStart: "12:00",
   lunchEnd: "14:00",
   dayEarlyUnlocked: {},
+  weekdayOverrides: {},
   personalEvents: [],
   expenses: [],
   locationAddress: "",

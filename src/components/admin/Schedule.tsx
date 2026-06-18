@@ -46,6 +46,8 @@ import {
   moveAppointment,
   MAX_PER_SLOT,
   isWeekend,
+  getEffectiveSchedule,
+  isWeekdayLocked,
 } from "@/contexts/AdminDataContext";
 import type { Appointment, AdherenceEvent, PersonalEvent } from "@/lib/admin-types";
 import { whatsappClientHref } from "@/lib/contact";
@@ -107,7 +109,8 @@ export const Schedule = () => {
   const displayItems = useMemo(() => {
     if (isWeekend(dateKey)) return [];
     const toMin = (t: string) => parseInt(t.slice(0, 2)) * 60 + parseInt(t.slice(3, 5) || "0");
-    const hourSlots = slotsBetween(settings.scheduleStart, settings.scheduleEnd, 60);
+    const { start: effScheduleStart, end: effScheduleEnd } = getEffectiveSchedule(settings, dateKey);
+    const hourSlots = slotsBetween(effScheduleStart, effScheduleEnd, 60);
 
     // Agrupa agendamentos do dia por horário exato (mesmo horário = duplo)
     const aptGroups: { time: string; apts: Appointment[] }[] = [];
@@ -173,8 +176,8 @@ export const Schedule = () => {
       ...hourSlots
         .filter((slot) => {
           if (occupiedHours.has(slot) || isCovered(slot)) return false;
-          // Só mostra se cabe 1h completa antes do fim da agenda
-          return toMin(slot) + 50 <= toMin(settings.scheduleEnd);
+          // Só mostra se cabe 1h completa antes do fim da agenda (já considera override do dia)
+          return toMin(slot) + 50 <= toMin(effScheduleEnd);
         })
         .map((slot): EmptyItem => {
           if (isEarlyBlocked(slot, settings.earlyBlockUntilHour, dateKey, settings.dayEarlyUnlocked))
@@ -242,6 +245,14 @@ export const Schedule = () => {
         });
         return;
       }
+      if (isWeekdayLocked(time, dateKey, settings)) {
+        toast({
+          variant: "destructive",
+          title: "Horário bloqueado",
+          description: "Você travou o atendimento fora do horário configurado para este dia da semana.",
+        });
+        return;
+      }
     }
     setNewTime(time);
     setNewClientId("");
@@ -290,6 +301,16 @@ export const Schedule = () => {
     while (start.getDay() !== targetDow && safety < 7) {
       start.setDate(start.getDate() + 1);
       safety++;
+    }
+
+    // Trava por dia da semana — todas as ocorrências cairão no mesmo dia da semana
+    if (isWeekdayLocked(recurTime, format(start, "yyyy-MM-dd"), settings)) {
+      toast({
+        variant: "destructive",
+        title: "Horário bloqueado",
+        description: "Você travou o atendimento fora do horário configurado para este dia da semana.",
+      });
+      return;
     }
 
     // ── Compromisso pessoal recorrente ──────────────────────────
@@ -358,6 +379,17 @@ export const Schedule = () => {
   };
 
   const confirmNew = () => {
+    // Trava por dia da semana vale mesmo para horário digitado manualmente
+    const timeToCheck = newIsPersonal && newPersonalAllDay ? null : newTime;
+    if (timeToCheck && isWeekdayLocked(timeToCheck, dateKey, settings)) {
+      toast({
+        variant: "destructive",
+        title: "Horário bloqueado",
+        description: "Você travou o atendimento fora do horário configurado para este dia da semana.",
+      });
+      return;
+    }
+
     // ── Compromisso pessoal ─────────────────────────────────────
     if (newIsPersonal) {
       if (!newPersonalTitle.trim()) return;

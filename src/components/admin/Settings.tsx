@@ -3,7 +3,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Building2, Clock, MapPin, DollarSign, MessageSquare } from "lucide-react";
+import { Building2, Clock, Lock, MapPin, DollarSign, MessageSquare } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { useAdminData } from "@/contexts/AdminDataContext";
 import type { ServicePlan, ProfessionalType } from "@/lib/admin-types";
 import { PROFESSIONAL_TYPE_LABELS } from "@/lib/admin-types";
@@ -43,6 +44,31 @@ export const Settings = () => {
         services: [...s.settings.services, { id, name: "Novo serviço", durationLabel: "~50 min", price: 0 }],
       },
     }));
+  };
+
+  const WEEKDAYS: { key: string; label: string }[] = [
+    { key: "1", label: "Segunda-feira" },
+    { key: "2", label: "Terça-feira" },
+    { key: "3", label: "Quarta-feira" },
+    { key: "4", label: "Quinta-feira" },
+    { key: "5", label: "Sexta-feira" },
+  ];
+
+  const setWeekdayOverride = (key: string, partial: Partial<{ start: string; end: string }> | null) => {
+    patch((s) => {
+      const current = { ...(s.settings.weekdayOverrides ?? {}) };
+      if (partial === null) {
+        delete current[key];
+      } else {
+        current[key] = {
+          start: s.settings.scheduleStart,
+          end: s.settings.scheduleEnd,
+          ...current[key],
+          ...partial,
+        };
+      }
+      return { ...s, settings: { ...s.settings, weekdayOverrides: current } };
+    });
   };
 
   const removeService = (id: string) => {
@@ -183,6 +209,59 @@ export const Settings = () => {
             O intervalo de almoço aparece em destaque na agenda; ainda é possível agendar. Nos horários “sugeridos” para
             enviar a pacientes, esse período fica de fora.
           </p>
+        </CardContent>
+      </Card>
+
+      <Card className="border-border">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Lock className="h-5 w-5" />
+            Travar horário por dia da semana
+          </CardTitle>
+          <CardDescription>
+            Diferente do horário acima (que é só indicativo), aqui a trava é dura: ative um dia e defina o intervalo —
+            fora dele não dá pra agendar nada (clínico, pessoal ou recorrente), nem digitando o horário manualmente.
+            Ex: sexta-feira até as 17h.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4 max-w-xl">
+          {WEEKDAYS.map(({ key, label }) => {
+            const ov = settings.weekdayOverrides?.[key];
+            const active = !!ov;
+            return (
+              <div
+                key={key}
+                className="flex flex-wrap items-center gap-3 pb-3 border-b border-border last:border-0 last:pb-0"
+              >
+                <Switch
+                  checked={active}
+                  onCheckedChange={(checked) => setWeekdayOverride(key, checked ? {} : null)}
+                />
+                <span className="w-32 text-sm font-medium">{label}</span>
+                {active ? (
+                  <>
+                    <Input
+                      type="time"
+                      className="w-28"
+                      value={ov?.start ?? settings.scheduleStart}
+                      onChange={(e) => setWeekdayOverride(key, { start: e.target.value })}
+                    />
+                    <span className="text-muted-foreground text-sm">até</span>
+                    <Input
+                      type="time"
+                      className="w-28"
+                      value={ov?.end ?? settings.scheduleEnd}
+                      onChange={(e) => setWeekdayOverride(key, { end: e.target.value })}
+                    />
+                  </>
+                ) : (
+                  <span className="text-sm text-muted-foreground">
+                    Usa o horário padrão ({settings.scheduleStart}–{settings.scheduleEnd})
+                  </span>
+                )}
+              </div>
+            );
+          })}
         </CardContent>
       </Card>
 

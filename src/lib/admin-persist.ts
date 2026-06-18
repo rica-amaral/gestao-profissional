@@ -106,6 +106,7 @@ type SettingsRow = {
   lunch_start: string;
   lunch_end: string;
   day_early_unlocked: Record<string, boolean>;
+  weekday_overrides: Record<string, { start?: string; end?: string }> | null;
   personal_events: PersonalEvent[] | null;
   expenses: Expense[] | null;
   location_address: string;
@@ -239,6 +240,7 @@ const settingsFromRow = (r: SettingsRow): ClinicSettings => ({
   lunchStart: r.lunch_start.slice(0, 5),
   lunchEnd: r.lunch_end.slice(0, 5),
   dayEarlyUnlocked: r.day_early_unlocked ?? {},
+  weekdayOverrides: r.weekday_overrides ?? {},
   personalEvents: Array.isArray(r.personal_events) ? (r.personal_events as PersonalEvent[]) : [],
   expenses: Array.isArray(r.expenses) ? (r.expenses as Expense[]) : [],
   locationAddress: r.location_address,
@@ -260,6 +262,7 @@ const settingsToRow = (s: ClinicSettings, nextEvalSeq: number, ownerId: string) 
   lunch_start: s.lunchStart.length === 5 ? `${s.lunchStart}:00` : s.lunchStart,
   lunch_end: s.lunchEnd.length === 5 ? `${s.lunchEnd}:00` : s.lunchEnd,
   day_early_unlocked: s.dayEarlyUnlocked,
+  weekday_overrides: s.weekdayOverrides ?? {},
   personal_events: s.personalEvents,
   expenses: s.expenses,
   location_address: s.locationAddress,

@@ -244,6 +244,44 @@ export function isLunchSlot(time: string, lunchStart: string, lunchEnd: string) 
   return time >= lunchStart && time < lunchEnd;
 }
 
+/**
+ * Retorna o horário de início/fim efetivo para uma data, considerando
+ * eventual override por dia da semana (settings.weekdayOverrides).
+ * Quando não há override para o dia, cai no scheduleStart/scheduleEnd globais.
+ */
+export function getEffectiveSchedule(
+  settings: { scheduleStart: string; scheduleEnd: string; weekdayOverrides?: Record<string, { start?: string; end?: string }> },
+  dateKey: string
+): { start: string; end: string } {
+  const dow = new Date(dateKey + "T12:00:00").getDay();
+  const ov = settings.weekdayOverrides?.[String(dow)];
+  return {
+    start: ov?.start || settings.scheduleStart,
+    end: ov?.end || settings.scheduleEnd,
+  };
+}
+
+/**
+ * Verifica se um horário viola a trava configurada por dia da semana.
+ * Diferente do scheduleStart/scheduleEnd globais (apenas indicativos),
+ * quando há um weekdayOverride para o dia, ele é uma trava DURA — não
+ * permite agendar (clínico, pessoal ou recorrente) fora do intervalo.
+ */
+export function isWeekdayLocked(
+  time: string,
+  dateKey: string,
+  settings: { weekdayOverrides?: Record<string, { start?: string; end?: string }> }
+): boolean {
+  const dow = new Date(dateKey + "T12:00:00").getDay();
+  const ov = settings.weekdayOverrides?.[String(dow)];
+  if (!ov) return false;
+  const toMin = (t: string) => parseInt(t.slice(0, 2)) * 60 + parseInt(t.slice(3, 5) || "0");
+  const tMin = toMin(time);
+  if (ov.start && tMin < toMin(ov.start)) return true;
+  if (ov.end && tMin >= toMin(ov.end)) return true;
+  return false;
+}
+
 /** Horário mínimo a partir do qual os slots noturnos ficam bloqueados por padrão. */
 export const LATE_BLOCK_FROM_HOUR = 19;
 
@@ -302,8 +340,8 @@ export function freeSlotsForDate(
   opts?: { suggestOnly?: boolean; emptyOnly?: boolean }
 ): string[] {
   if (isWeekend(dateKey)) return [];
-  const { scheduleStart, scheduleEnd, earlyBlockUntilHour, lunchStart, lunchEnd, dayEarlyUnlocked } =
-    store.settings;
+  const { earlyBlockUntilHour, lunchStart, lunchEnd, dayEarlyUnlocked } = store.settings;
+  const { start: scheduleStart, end: scheduleEnd } = getEffectiveSchedule(store.settings, dateKey);
   const all = slotsBetween(scheduleStart, scheduleEnd, 60);
   const toMin = (t: string) => parseInt(t.slice(0, 2)) * 60 + parseInt(t.slice(3, 5) || "0");
 
