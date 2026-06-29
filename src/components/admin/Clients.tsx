@@ -29,6 +29,8 @@ import {
   formatDateBR,
   effectiveLastVisitDate,
   daysSinceLastVisit,
+  isStaleClient,
+  STALE_CLIENT_MONTHS,
   todayKeyBRT,
 } from "@/contexts/AdminDataContext";
 import type { Client, ClientHealthData } from "@/lib/admin-types";
@@ -62,6 +64,7 @@ export const Clients = () => {
   const [sortMode, setSortMode] = useState<"name" | "lastVisit" | "appointments">("name");
   const [genderFilter, setGenderFilter] = useState<"M" | "F" | "O" | null>(null);
   const [priceFilter, setPriceFilter] = useState<number | null>(null);
+  const [staleOnly, setStaleOnly] = useState(false);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
 
   // ── Exames / Anexos ──────────────────────────────────────────────
@@ -158,6 +161,12 @@ export const Clients = () => {
     return map;
   }, [store.clients, store.appointments, todayKey]);
 
+  // Total de clientes inativos (+6 meses sem consulta), independente dos filtros ativos.
+  const staleCount = useMemo(
+    () => store.clients.filter((c) => isStaleClient(c, store.appointments, todayKey)).length,
+    [store.clients, store.appointments, todayKey]
+  );
+
   const filtered = useMemo(() => {
     const t = q.trim().toLowerCase();
     const digits = t.replace(/\D/g, "");
@@ -173,6 +182,9 @@ export const Clients = () => {
       }
       if (priceFilter !== null) {
         if (clientLastPrice.get(c.id) !== priceFilter) return false;
+      }
+      if (staleOnly) {
+        if (!isStaleClient(c, store.appointments, todayKey)) return false;
       }
       return true;
     });
@@ -195,7 +207,7 @@ export const Clients = () => {
       });
     }
     return list;
-  }, [store.clients, store.appointments, q, sortMode, genderFilter, priceFilter, clientLastPrice, todayKey]);
+  }, [store.clients, store.appointments, q, sortMode, genderFilter, priceFilter, staleOnly, clientLastPrice, todayKey]);
 
   const openClientDetail = (c: Client) => {
     setDetailClient(c);
@@ -471,11 +483,20 @@ export const Clients = () => {
             </Select>
           </>
         )}
-        {(sortMode !== "name" || genderFilter || priceFilter !== null) && (
+        <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide ml-2">Atividade:</span>
+        <Button
+          type="button" size="sm"
+          variant={staleOnly ? "default" : "outline"}
+          className={staleOnly ? "" : "text-amber-600 border-amber-300 hover:bg-amber-50"}
+          onClick={() => setStaleOnly((v) => !v)}
+        >
+          Inativos (+{STALE_CLIENT_MONTHS}m){staleCount > 0 ? ` · ${staleCount}` : ""}
+        </Button>
+        {(sortMode !== "name" || genderFilter || priceFilter !== null || staleOnly) && (
           <Button
             type="button" size="sm" variant="ghost"
             className="text-muted-foreground text-xs"
-            onClick={() => { setSortMode("name"); setGenderFilter(null); setPriceFilter(null); }}
+            onClick={() => { setSortMode("name"); setGenderFilter(null); setPriceFilter(null); setStaleOnly(false); }}
           >
             Limpar
           </Button>
@@ -675,6 +696,11 @@ export const Clients = () => {
                         {(faltaCountMap.get(client.id) ?? 0) > 0 && (
                           <Badge variant="outline" className="font-normal text-red-600 border-red-400/50">
                             {faltaCountMap.get(client.id)} falta{(faltaCountMap.get(client.id) ?? 0) > 1 ? "s" : ""}
+                          </Badge>
+                        )}
+                        {isStaleClient(client, store.appointments, todayKey) && (
+                          <Badge variant="outline" className="font-normal text-amber-600 border-amber-400/50">
+                            +{STALE_CLIENT_MONTHS} meses sem consulta
                           </Badge>
                         )}
                       </div>
