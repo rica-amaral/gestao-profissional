@@ -231,13 +231,23 @@ export const Clients = () => {
 
   const saveClient = () => {
     if (!detailClient) return;
+    const resolvedName = (draft.name ?? detailClient.name).trim();
+    if (resolvedName.length < 2) {
+      toast({
+        variant: "destructive",
+        title: "O nome do cliente não pode ficar vazio",
+        description:
+          "Cadastro duplicado não se resolve apagando o nome — isso destrói o histórico do cliente. Contate o administrador do sistema para unificar os cadastros duplicados.",
+      });
+      return;
+    }
     patch((s) => ({
       ...s,
       clients: s.clients.map((c) =>
         c.id === detailClient.id
           ? {
               ...c,
-              name: (draft.name ?? c.name).trim(),
+              name: resolvedName,
               phone: (draft.phone ?? c.phone).trim(),
               birthDate: draft.birthDate?.trim() || undefined,
               email: draft.email?.trim() || undefined,
@@ -256,7 +266,7 @@ export const Clients = () => {
         a.clientId === detailClient.id
           ? {
               ...a,
-              clientName: (draft.name ?? a.clientName).trim(),
+              clientName: resolvedName,
               clientPhone: (draft.phone ?? a.clientPhone).trim(),
             }
           : a
@@ -700,7 +710,7 @@ export const Clients = () => {
                         )}
                         {isStaleClient(client, store.appointments, todayKey) && (
                           <Badge variant="outline" className="font-normal text-amber-600 border-amber-400/50">
-                            +{STALE_CLIENT_MONTHS} meses sem consulta
+                            {li ? `+${STALE_CLIENT_MONTHS} meses sem consulta` : "Sem consulta registrada"}
                           </Badge>
                         )}
                       </div>
@@ -867,6 +877,9 @@ export const Clients = () => {
                             value={draft.name ?? ""}
                             onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
                           />
+                          <p className="text-xs text-muted-foreground">
+                            Cliente duplicado? Não apague o nome — isso destrói o histórico. Contate o administrador para unificar os cadastros.
+                          </p>
                         </div>
                         <div className="space-y-1.5">
                           <Label htmlFor="cli-gender">Sexo</Label>

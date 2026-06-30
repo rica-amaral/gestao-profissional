@@ -424,13 +424,13 @@ export function daysSinceLastVisit(
 }
 
 /** Quantidade de meses sem consulta a partir da qual o cliente é considerado inativo. */
-export const STALE_CLIENT_MONTHS = 6;
+export const STALE_CLIENT_MONTHS = 4;
 
 /**
- * Retorna true se o cliente já teve ao menos uma consulta registrada (manual
- * ou via agendamento) e essa última consulta foi há mais de `months` meses
- * em relação a `todayKey`. Clientes sem nenhuma consulta registrada não são
- * considerados "inativos" por este critério (não há referência de data).
+ * Retorna true se o cliente está inativo: ou já teve consulta registrada
+ * (manual ou via agendamento) e essa última consulta foi há mais de
+ * `months` meses em relação a `todayKey`, ou nunca teve nenhuma consulta
+ * registrada (também conta como inativo, para não passar batido).
  */
 export function isStaleClient(
   client: Client,
@@ -439,7 +439,7 @@ export function isStaleClient(
   months: number = STALE_CLIENT_MONTHS
 ): boolean {
   const li = effectiveLastVisitDate(client, appointments, todayKey);
-  if (!li) return false;
+  if (!li) return true;
   const cutoff = new Date(todayKey + "T12:00:00");
   cutoff.setMonth(cutoff.getMonth() - months);
   return new Date(li + "T12:00:00") < cutoff;
