@@ -66,6 +66,7 @@ export const Clients = () => {
   const [genderFilter, setGenderFilter] = useState<"M" | "F" | "O" | null>(null);
   const [priceFilter, setPriceFilter] = useState<number | null>(null);
   const [staleOnly, setStaleOnly] = useState(false);
+  const [staleOnly6, setStaleOnly6] = useState(false);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
 
   // ── Exames / Anexos ──────────────────────────────────────────────
@@ -162,9 +163,12 @@ export const Clients = () => {
     return map;
   }, [store.clients, store.appointments, todayKey]);
 
-  // Total de clientes inativos (+6 meses sem consulta), independente dos filtros ativos.
   const staleCount = useMemo(
     () => store.clients.filter((c) => isStaleClient(c, store.appointments, todayKey)).length,
+    [store.clients, store.appointments, todayKey]
+  );
+  const staleCount6 = useMemo(
+    () => store.clients.filter((c) => isStaleClient(c, store.appointments, todayKey, STALE_CLIENT_MONTHS_CRITICAL)).length,
     [store.clients, store.appointments, todayKey]
   );
 
@@ -184,7 +188,9 @@ export const Clients = () => {
       if (priceFilter !== null) {
         if (clientLastPrice.get(c.id) !== priceFilter) return false;
       }
-      if (staleOnly) {
+      if (staleOnly6) {
+        if (!isStaleClient(c, store.appointments, todayKey, STALE_CLIENT_MONTHS_CRITICAL)) return false;
+      } else if (staleOnly) {
         if (!isStaleClient(c, store.appointments, todayKey)) return false;
       }
       return true;
@@ -208,7 +214,7 @@ export const Clients = () => {
       });
     }
     return list;
-  }, [store.clients, store.appointments, q, sortMode, genderFilter, priceFilter, staleOnly, clientLastPrice, todayKey]);
+  }, [store.clients, store.appointments, q, sortMode, genderFilter, priceFilter, staleOnly, staleOnly6, clientLastPrice, todayKey]);
 
   const openClientDetail = (c: Client) => {
     setDetailClient(c);
@@ -499,15 +505,23 @@ export const Clients = () => {
           type="button" size="sm"
           variant={staleOnly ? "default" : "outline"}
           className={staleOnly ? "" : "text-amber-600 border-amber-300 hover:bg-amber-50"}
-          onClick={() => setStaleOnly((v) => !v)}
+          onClick={() => { setStaleOnly((v) => !v); setStaleOnly6(false); }}
         >
           Inativos (+{STALE_CLIENT_MONTHS}m){staleCount > 0 ? ` · ${staleCount}` : ""}
         </Button>
-        {(sortMode !== "name" || genderFilter || priceFilter !== null || staleOnly) && (
+        <Button
+          type="button" size="sm"
+          variant={staleOnly6 ? "default" : "outline"}
+          className={staleOnly6 ? "" : "text-red-600 border-red-300 hover:bg-red-50"}
+          onClick={() => { setStaleOnly6((v) => !v); setStaleOnly(false); }}
+        >
+          Inativos (+{STALE_CLIENT_MONTHS_CRITICAL}m){staleCount6 > 0 ? ` · ${staleCount6}` : ""}
+        </Button>
+        {(sortMode !== "name" || genderFilter || priceFilter !== null || staleOnly || staleOnly6) && (
           <Button
             type="button" size="sm" variant="ghost"
             className="text-muted-foreground text-xs"
-            onClick={() => { setSortMode("name"); setGenderFilter(null); setPriceFilter(null); setStaleOnly(false); }}
+            onClick={() => { setSortMode("name"); setGenderFilter(null); setPriceFilter(null); setStaleOnly(false); setStaleOnly6(false); }}
           >
             Limpar
           </Button>
