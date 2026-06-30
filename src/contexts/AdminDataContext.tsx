@@ -423,8 +423,10 @@ export function daysSinceLastVisit(
   return diff < 0 ? 0 : diff;
 }
 
-/** Quantidade de meses sem consulta a partir da qual o cliente é considerado inativo. */
+/** Quantidade de meses sem consulta a partir da qual o cliente é considerado inativo (alerta âmbar). */
 export const STALE_CLIENT_MONTHS = 4;
+/** Quantidade de meses sem consulta para nível crítico de inatividade (alerta vermelho). */
+export const STALE_CLIENT_MONTHS_CRITICAL = 6;
 
 /**
  * Retorna true se o cliente está inativo: ou já teve consulta registrada

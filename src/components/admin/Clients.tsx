@@ -31,6 +31,7 @@ import {
   daysSinceLastVisit,
   isStaleClient,
   STALE_CLIENT_MONTHS,
+  STALE_CLIENT_MONTHS_CRITICAL,
   todayKeyBRT,
 } from "@/contexts/AdminDataContext";
 import type { Client, ClientHealthData } from "@/lib/admin-types";
@@ -708,11 +709,15 @@ export const Clients = () => {
                             {faltaCountMap.get(client.id)} falta{(faltaCountMap.get(client.id) ?? 0) > 1 ? "s" : ""}
                           </Badge>
                         )}
-                        {isStaleClient(client, store.appointments, todayKey) && (
-                          <Badge variant="outline" className="font-normal text-amber-600 border-amber-400/50">
-                            {li ? `+${STALE_CLIENT_MONTHS} meses sem consulta` : "Sem consulta registrada"}
+                        {isStaleClient(client, store.appointments, todayKey, STALE_CLIENT_MONTHS_CRITICAL) ? (
+                          <Badge variant="outline" className="font-normal text-red-600 border-red-400/50">
+                            {li ? `+${STALE_CLIENT_MONTHS_CRITICAL} meses sem consulta` : "Sem consulta registrada"}
                           </Badge>
-                        )}
+                        ) : isStaleClient(client, store.appointments, todayKey) ? (
+                          <Badge variant="outline" className="font-normal text-amber-600 border-amber-400/50">
+                            +{STALE_CLIENT_MONTHS} meses sem consulta
+                          </Badge>
+                        ) : null}
                       </div>
                     </div>
                   </div>
