@@ -713,7 +713,7 @@ export const Clients = () => {
                         })()}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {store.appointments.filter((a) => a.clientId === client.id && a.date <= todayKey).length} consulta(s) realizadas
+                        {store.appointments.filter((a) => a.clientId === client.id && a.date <= todayKey && !a.absent).length} consulta(s) realizadas
                       </p>
                       <div className="flex flex-wrap gap-2 mt-2">
                         {client.paymentPending && <Badge variant="destructive">Pagamento pendente</Badge>}

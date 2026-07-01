@@ -396,12 +396,12 @@ export function freeSlotsForDate(
 
 export function effectiveLastVisitDate(
   client: Client,
-  appointments: { clientId: string; date: string }[],
+  appointments: { clientId: string; date: string; absent?: boolean }[],
   todayKey: string = todayKeyBRT()
 ): string | null {
   const manual = client.lastVisitDate?.trim() || null;
   const pastDates = appointments
-    .filter((a) => a.clientId === client.id && a.date <= todayKey)
+    .filter((a) => a.clientId === client.id && a.date <= todayKey && !a.absent)
     .map((a) => a.date);
   const maxApt = pastDates.length ? [...pastDates].sort().pop()! : null;
   if (!maxApt && !manual) return null;
